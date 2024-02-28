@@ -1,0 +1,24 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US
+  keyboard:
+    layout: us
+    # general packages needed for machines - referenced from https://tekanaid.com/posts/hashicorp-packer-build-ubuntu20-04-vmware
+  packages: [tree]
+  identity:
+    hostname: ubuntu-host
+    username: user
+    password: '$6$c3gVjy37EphtGcNq$eoQWvWhzzKzbtEpkqOc7JevH.bUv5TdT84Jqr8zo3AWOWUfSsGq14pwjYFa0WiZH7wydY/K4yeqxpFMazBD3M0'
+  early-commands:
+    # otherwise packer tries to connect and exceed max attempts:
+    - systemctl stop ssh.service
+    - systemctl stop ssh.socket
+  ssh:
+    install-server: yes
+    allow-pw: yes
+  late-commands:
+      - 'sed -i "s/dhcp4: true/&\n      dhcp-identifier: mac/" /target/etc/netplan/00-installer-config.yaml'
+      - echo 'user ALL=(ALL:ALL) ALL' > /target/etc/sudoers.d/user
+      # Enable hyper-v daemons only if using hyper-v virtualization
+      - if [ $(virt-what) == "hyperv" ]; then apt-get update && apt-get install -y hyperv-daemons linux-tools-$(uname -r) linux-cloud-tools-$(uname -r) linux-cloud-tools-common cifs-utils && systemctl enable hypervvssd && systemctl enable hypervkvpd && systemctl start hypervvssd && systemctl start hypervkvpd; fi
